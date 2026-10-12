@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="ko" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>나만의 데스크톱 캘린더 & 마케팅 예산 관리</title>
+    
+    <!-- PWA & Desktop App Meta Tags -->
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="개인 캘린더">
+    <meta name="description" content="독립형 데스크톱 및 모바일 오프라인 지원 개인 맞춤 플래너 & 마케팅 예산 관리">
+
+    <!-- Dynamic Inline PWA Web Manifest -->
+    <link id="manifest-placeholder" rel="manifest">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.4);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(107, 114, 128, 0.7);
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+        }
+        .dark .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+        }
+        .no-select {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans h-full min-h-screen transition-colors duration-200 antialiased flex flex-col no-select overflow-x-hidden">
+
+    <header class="sticky top-0 z-30 glass-panel border-b border-slate-200/80 dark:border-slate-800/80 px-4 lg:px-8 py-3 flex items-center justify-between shadow-xs">
+        <div class="flex items-center space-x-4">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+                <i class="fa-solid font-bold fa-calendar-check text-lg"></i>
+            </div>
+            <div>
+                <div class="flex items-center space-x-2">
+                    <h1 class="text-base font-bold leading-tight text-slate-900 dark:text-white">데스크톱 플래너</h1>
+                    <span id="appEnvironmentBadge" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">PWA / Web</span>
+                </div>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block">독립 실행형 개인 일정 및 마케팅 예산 시스템</p>
+            </div>
+
+            <!-- Tab Switcher -->
+            <div class="hidden md:flex items-center space-x-1 bg-slate-200/70 dark:bg-slate-800/80 p-1 rounded-xl ml-4">
+                <button id="tabCalendarBtn" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white shadow-sm transition-all">📅 캘린더</button>
+                <button id="tabBudgetBtn" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all">💰 마케팅 예산</button>
+            </div>
+        </div>
+
+        <!-- Header Actions -->
+        <div class="flex items-center space-x-2 sm:space-x-3">
+            <button id="pwaInstallBtn" class="hidden px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-xs shadow-md shadow-emerald-500/20 items-center space-x-1.5 transition-all">
+                <i class="fa-solid fa-download"></i>
+                <span>앱으로 설치</span>
+            </button>
+
+            <!-- Search Bar (Calendar View only) -->
+            <div id="searchContainer" class="relative hidden md:block">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                <input type="text" id="searchInput" placeholder="일정 검색..." 
+                       class="pl-8 pr-4 py-1.5 text-xs rounded-lg bg-slate-200/60 dark:bg-slate-800/80 border border-transparent focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-900 text-slate-800 dark:text-slate-100 outline-none transition-all w-36 lg:w-48">
+            </div>
+
+            <button id="notifyToggleBtn" class="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors" title="알림 설정">
+                <i id="notifyIcon" class="fa-regular fa-bell text-base"></i>
+            </button>
+
+            <button id="themeToggleBtn" class="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors" title="다크 모드 변경">
+                <i class="fa-solid fa-moon text-base dark:hidden"></i>
+                <i class="fa-solid fa-sun text-base hidden dark:block text-amber-400"></i>
+            </button>
+
+            <div class="relative inline-block text-left">
+                <button id="settingsMenuBtn" class="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors" title="설정 및 관리">
+                    <i class="fa-solid fa-gear text-base"></i>
+                </button>
+                <div id="settingsDropdown" class="hidden absolute right-0 mt-2 w-56 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl z-50 py-1.5 text-xs">
+                    <button id="triggerTestNotifyBtn" class="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center space-x-2 text-slate-700 dark:text-slate-200">
+                        <i class="fa-solid fa-bell-ring text-indigo-500"></i>
+                        <span>데스크톱 알림 테스트</span>
+                    </button>
+                    <div class="my-1 border-t border-slate-100 dark:border-slate-800"></div>
+                    <button id="exportDataBtn" class="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center space-x-2 text-slate-700 dark:text-slate-200">
+                        <i class="fa-solid fa-file-export text-indigo-500"></i>
+                        <span>데이터 내보내기 (백업 JSON)</span>
+                    </button>
+                    <label class="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center space-x-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+                        <i class="fa-solid fa-file-import text-indigo-500"></i>
+                        <span>데이터 가져오기 (복구)</span>
+                        <input type="file" id="importFileInput" class="hidden" accept=".json">
+                    </label>
+                    <div class="my-1 border-t border-slate-100 dark:border-slate-800"></div>
+                    <button id="showElectronGuideBtn" class="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center space-x-2 text-slate-700 dark:text-slate-200">
+                        <i class="fa-solid fa-desktop text-indigo-500"></i>
+                        <span>.EXE 파일 제작 안내</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dynamic Action Button based on Active Tab -->
+            <button id="primaryActionBtn" class="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold text-xs shadow-md shadow-indigo-500/20 flex items-center space-x-1.5 transition-all">
+                <i class="fa-solid fa-plus"></i>
+                <span id="primaryActionText" class="hidden sm:inline">새 일정</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Mobile Tab Switcher Bar -->
+    <div class="md:hidden flex items-center justify-center space-x-2 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-2">
+        <button id="mobileTabCalendarBtn" class="flex-1 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white shadow-sm transition-all text-center">📅 캘린더</button>
+        <button id="mobileTabBudgetBtn" class="flex-1 py-1.5 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-center">💰 마케팅 예산</button>
+    </div>
+
+    <!-- MAIN VIEW CONTAINER -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 flex flex-col">
+
+        <!-- ==================== VIEW 1: CALENDAR VIEW ==================== -->
+        <div id="calendarViewContainer" class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
+            <!-- Left Column: Main Calendar Workspace -->
+            <section class="lg:col-span-8 xl:col-span-9 flex flex-col space-y-4">
+                
+                <!-- Calendar Navigation & Category Filter Toolbar -->
+                <div class="glass-panel p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-start">
+                        <h2 id="currentMonthYearText" class="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white min-w-[150px]">
+                            ---
+                        </h2>
+                        <div class="flex items-center space-x-1 bg-slate-200/60 dark:bg-slate-800/80 p-1 rounded-xl">
+                            <button id="prevMonthBtn" class="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-700 dark:text-slate-300 transition-all" title="이전 달">
+                                <i class="fa-solid fa-chevron-left text-xs"></i>
+                            </button>
+                            <button id="todayBtn" class="px-2.5 py-1 text-xs font-semibold hover:bg-white dark:hover:bg-slate-700 rounded-lg text-indigo-600 dark:text-indigo-400 transition-all">
+                                오늘
+                            </button>
+                            <button id="nextMonthBtn" class="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-700 dark:text-slate-300 transition-all" title="다음 달">
+                                <i class="fa-solid fa-chevron-right text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Category Filters -->
+                    <div class="flex items-center space-x-1 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 scrollbar-none" id="categoryFilterContainer">
+                        <button data-category="ALL" class="category-filter-btn px-3 py-1 rounded-lg text-xs font-medium border border-indigo-600 bg-indigo-600 text-white transition-all whitespace-nowrap">
+                            전체
+                        </button>
+                        <button data-category="WORK" class="category-filter-btn px-3 py-1 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 transition-all whitespace-nowrap flex items-center space-x-1.5">
+                            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                            <span>업무</span>
+                        </button>
+                        <button data-category="PERSONAL" class="category-filter-btn px-3 py-1 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 transition-all whitespace-nowrap flex items-center space-x-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            <span>개인</span>
+                        </button>
+                        <button data-category="FITNESS" class="category-filter-btn px-3 py-1 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 transition-all whitespace-nowrap flex items-center space-x-1.5">
+                            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                            <span>운동</span>
+                        </button>
+                        <button data-category="IMPORTANT" class="category-filter-btn px-3 py-1 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 transition-all whitespace-nowrap flex items-center space-x-1.5">
+                            <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                            <span>중요</span>
+                        </button>
+                        <button data-category="IDEAS" class="category-filter-btn px-3 py-1 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 transition-all whitespace-nowrap flex items-center space-x-1.5">
+                            <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+                            <span>아이디어</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Calendar Display Grid -->
+                <div class="glass-panel rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col flex-1">
+                    <div class="grid grid-cols-7 border-b border-slate-200 dark:border-slate-800 text-center font-semibold text-xs py-2 text-slate-500 dark:text-slate-400 bg-slate-100/50 dark:bg-slate-900/50">
+                        <div class="text-rose-500">일</div>
+                        <div>월</div>
+                        <div>화</div>
+                        <div>수</div>
+                        <div>목</div>
+                        <div>금</div>
+                        <div class="text-blue-500">토</div>
+                    </div>
+                    <div id="calendarGrid" class="grid grid-cols-7 auto-rows-fr flex-1 divide-x divide-y divide-slate-200/60 dark:divide-slate-800/60 min-h-[500px]">
+                        <!-- JS Injected -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Column: Sidebar Panels -->
+            <section class="lg:col-span-4 xl:col-span-3 flex flex-col space-y-6">
+                <div class="glass-panel p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col h-full min-h-[280px]">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+                        <div>
+                            <span id="selectedDayOfWeek" class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">TODAY</span>
+                            <h3 id="selectedDateText" class="text-base font-bold text-slate-900 dark:text-white">날짜 선택</h3>
+                        </div>
+                        <button id="addEventForDateBtn" class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900 text-indigo-600 dark:text-indigo-400 flex items-center justify-center transition-all" title="이 날짜에 일정 추가">
+                            <i class="fa-solid fa-plus text-xs"></i>
+                        </button>
+                    </div>
+                    <div id="selectedDateEventsList" class="flex-1 overflow-y-auto mt-4 space-y-2.5 max-h-[300px] pr-1"></div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center space-x-2">
+                            <i class="fa-solid fa-list-check text-indigo-500"></i>
+                            <h3 class="font-bold text-slate-900 dark:text-white text-sm">오늘의 할 일</h3>
+                        </div>
+                        <span id="todoCountText" class="text-xs bg-slate-200/60 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full font-medium">0/0</span>
+                    </div>
+                    <form id="todoForm" class="flex items-center space-x-2 mb-3">
+                        <input type="text" id="todoInput" placeholder="할 일 입력 후 Enter..." required 
+                               class="flex-1 px-3 py-1.5 text-xs rounded-lg bg-slate-200/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500 transition-all">
+                        <button type="submit" class="p-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-all text-xs px-2.5">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </form>
+                    <ul id="todoList" class="space-y-2 max-h-[180px] overflow-y-auto pr-1"></ul>
+                </div>
+            </section>
+        </div>
+
+        <!-- ==================== VIEW 2: MARKETING BUDGET VIEW ==================== -->
+        <div id="budgetViewContainer" class="space-y-6 hidden flex-1">
+            <!-- Budget Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="glass-panel p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">총 계획 예산 (Total Budget)</p>
+                    <h3 id="totalBudgetVal" class="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">0 원</h3>
+                </div>
+                <div class="glass-panel p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">총 실제 집행액 (Total Spent)</p>
+                    <h3 id="totalSpentVal" class="text-2xl font-extrabold text-amber-600 dark:text-amber-400 mt-1">0 원</h3>
+                </div>
+                <div class="glass-panel p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">잔여 예산 (Remaining Balance)</p>
+                    <div class="flex items-baseline justify-between mt-1">
+                        <h3 id="totalRemainingVal" class="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">0 원</h3>
+                        <span id="budgetPercentBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">0% 집행</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Doughnut Chart -->
+                <div class="glass-panel p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <h3 class="font-bold text-sm text-slate-900 dark:text-white mb-3 flex items-center space-x-2">
+                        <i class="fa-solid fa-chart-pie text-indigo-500"></i>
+                        <span>카테고리별 예산 배분 비중</span>
+                    </h3>
+                    <div class="relative h-[260px] flex items-center justify-center">
+                        <canvas id="budgetDoughnutChart"></canvas>
+                    </div>
+                </div>
+                <!-- Bar Chart -->
+                <div class="glass-panel p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <h3 class="font-bold text-sm text-slate-900 dark:text-white mb-3 flex items-center space-x-2">
+                        <i class="fa-solid fa-chart-column text-indigo-500"></i>
+                        <span>캠페인별 예산 vs 실제 집행액 비교</span>
+                    </h3>
+                    <div class="relative h-[260px] flex items-center justify-center">
+                        <canvas id="budgetBarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Campaign List Table -->
+            <div class="glass-panel rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
+                <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                    <h3 class="font-bold text-sm text-slate-900 dark:text-white">마케팅 캠페인 목록</h3>
+                    <button id="addBudgetBtn" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition-all flex items-center space-x-1.5">
+                        <i class="fa-solid fa-plus text-[10px]"></i>
+                        <span>캠페인 추가</span>
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-100/60 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                                <th class="p-3 font-semibold">캠페인명</th>
+                                <th class="p-3 font-semibold">카테고리</th>
+                                <th class="p-3 font-semibold">계획 예산</th>
+                                <th class="p-3 font-semibold">실제 집행액</th>
+                                <th class="p-3 font-semibold">기간</th>
+                                <th class="p-3 font-semibold">상태</th>
+                                <th class="p-3 font-semibold text-center">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="budgetTableBody" class="divide-y divide-slate-200/50 dark:divide-slate-800/50">
+                            <!-- JS Injected -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Event Form Modal -->
+    <div id="eventModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm hidden transition-opacity">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md overflow-hidden">
+            <div class="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
+                <h3 id="modalTitle" class="text-base font-bold text-slate-900 dark:text-white">일정 등록</h3>
+                <button id="closeModalBtn" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="eventForm" class="p-4 space-y-3.5">
+                <input type="hidden" id="eventId">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">일정 제목 <span class="text-rose-500">*</span></label>
+                    <input type="text" id="eventTitle" required placeholder="예: 브랜드 캠페인 런칭 미팅" 
+                           class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">날짜 <span class="text-rose-500">*</span></label>
+                        <input type="date" id="eventDate" required 
+                               class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">시간</label>
+                        <input type="time" id="eventTime" 
+                               class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">카테고리</label>
+                    <select id="eventCategory" 
+                            class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                        <option value="WORK">업무 (Work)</option>
+                        <option value="PERSONAL">개인 (Personal)</option>
+                        <option value="FITNESS">운동 (Fitness)</option>
+                        <option value="IMPORTANT">중요 (Important)</option>
+                        <option value="IDEAS">아이디어 (Ideas)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">상세 메모</label>
+                    <textarea id="eventNotes" rows="3" placeholder="메모나 준비 사항을 입력하세요..." 
+                              class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none"></textarea>
+                </div>
+                <div class="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <button type="button" id="deleteEventBtn" class="hidden px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 hover:bg-rose-100 font-medium text-xs transition-colors">
+                        <i class="fa-solid fa-trash mr-1"></i> 삭제
+                    </button>
+                    <div class="flex items-center space-x-2 ml-auto">
+                        <button type="button" id="cancelModalBtn" class="px-3.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-medium transition-colors">
+                            취소
+                        </button>
+                        <button type="submit" class="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-md shadow-indigo-500/20 transition-all">
+                            저장
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Marketing Budget Form Modal -->
+    <div id="budgetModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm hidden transition-opacity">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md overflow-hidden">
+            <div class="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
+                <h3 id="budgetModalTitle" class="text-base font-bold text-slate-900 dark:text-white">캠페인 예산 추가</h3>
+                <button id="closeBudgetModalBtn" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="budgetForm" class="p-4 space-y-3.5">
+                <input type="hidden" id="budgetId">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">캠페인명 <span class="text-rose-500">*</span></label>
+                    <input type="text" id="budgetName" required placeholder="예: 가을 시즌 인플루언서 릴스 광고" 
+                           class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">카테고리</label>
+                        <select id="budgetCategory" 
+                                class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                            <option value="SNS 광고">SNS 광고</option>
+                            <option value="검색 광고">검색 광고</option>
+                            <option value="인플루언서">인플루언서</option>
+                            <option value="디자인/제작">디자인/제작</option>
+                            <option value="이벤트/기타">이벤트/기타</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">진행 상태</label>
+                        <select id="budgetStatus" 
+                                class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                            <option value="진행 예정">진행 예정</option>
+                            <option value="진행 중">진행 중</option>
+                            <option value="완료">완료</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">계획 예산 (원) <span class="text-rose-500">*</span></label>
+                        <input type="number" id="budgetAllocated" required placeholder="1000000" 
+                               class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">실제 집행액 (원)</label>
+                        <input type="number" id="budgetSpent" placeholder="850000" 
+                               class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">기간 (예: 10.01 ~ 10.20)</label>
+                    <input type="text" id="budgetPeriod" placeholder="10.01 ~ 10.20" 
+                           class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                </div>
+                <div class="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <button type="button" id="deleteBudgetBtn" class="hidden px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 hover:bg-rose-100 font-medium text-xs transition-colors">
+                        <i class="fa-solid fa-trash mr-1"></i> 삭제
+                    </button>
+                    <div class="flex items-center space-x-2 ml-auto">
+                        <button type="button" id="cancelBudgetModalBtn" class="px-3.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-medium transition-colors">
+                            취소
+                        </button>
+                        <button type="submit" class="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-md shadow-indigo-500/20 transition-all">
+                            저장
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Electron packaging guide Modal -->
+    <div id="electronGuideModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm hidden transition-opacity">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-xl overflow-hidden max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
+                <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+                    <i class="fa-solid fa-desktop text-indigo-500"></i>
+                    <span>.EXE 프로그램 만들기 (Electron 가이드)</span>
+                </h3>
+                <button id="closeElectronGuideBtn" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-5 overflow-y-auto space-y-4 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                <p class="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 p-3 rounded-xl border border-indigo-200 dark:border-indigo-800">
+                    이 웹앱을 윈도우 실행 파일(<code>.exe</code>)이나 맥 앱(<code>.app</code>)으로 패키징하는 방법입니다.
+                </p>
+                <div class="space-y-1">
+                    <p class="font-bold text-slate-800 dark:text-slate-100">1단계: 폴더 만들고 파일 배치하기</p>
+                    <p>새 폴더를 만들고 <code>index.html</code>로 저장합니다.</p>
+                </div>
+                <div class="space-y-1">
+                    <p class="font-bold text-slate-800 dark:text-slate-100">2단계: main.js 및 package.json 생성</p>
+                    <p>같은 폴더에 아래 코드로 <code>main.js</code> 파일을 만듭니다:</p>
+                    <pre class="bg-slate-900 text-slate-100 p-3 rounded-lg font-mono text-[11px] overflow-x-auto select-all">
+const { app, BrowserWindow } = require('electron');
+
+function createWindow () {
+  const win = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    webPreferences: { nodeIntegration: true }
+  });
+  win.loadFile('index.html');
+}
+
+app.whenReady().then(createWindow);</pre>
+                </div>
+                <div class="space-y-1">
+                    <p class="font-bold text-slate-800 dark:text-slate-100">3단계: 패키징 명령 실행</p>
+                    <pre class="bg-slate-900 text-slate-100 p-3 rounded-lg font-mono text-[11px] overflow-x-auto select-all">
+npm init -y
+npm install --save-dev electron electron-packager
+npx electron-packager . MyCalendarApp --platform=win32 --arch=x64</pre>
+                </div>
+            </div>
+            <div class="p-3 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 text-right">
+                <button id="confirmElectronGuideBtn" class="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const CATEGORIES = {
+                WORK: { label: '업무', color: 'bg-blue-500', bgLight: 'bg-blue-50 dark:bg-blue-950/40', text: 'text-blue-600 dark:text-blue-400', border: 'border-blue-500' },
+                PERSONAL: { label: '개인', color: 'bg-emerald-500', bgLight: 'bg-emerald-50 dark:bg-emerald-950/40', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-500' },
+                FITNESS: { label: '운동', color: 'bg-amber-500', bgLight: 'bg-amber-50 dark:bg-amber-950/40', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-500' },
+                IMPORTANT: { label: '중요', color: 'bg-rose-500', bgLight: 'bg-rose-50 dark:bg-rose-950/40', text: 'text-rose-600 dark:text-rose-400', border: 'border-rose-500' },
+                IDEAS: { label: '아이디어', color: 'bg-purple-500', bgLight: 'bg-purple-50 dark:bg-purple-950/40', text: 'text-purple-600 dark:text-purple-400', border: 'border-purple-500' }
+            };
+
+            let currentDate = new Date();
+            let selectedDateStr = formatDateKey(new Date());
+            let activeCategoryFilter = 'ALL';
+            let searchQuery = '';
+            let currentActiveTab = 'calendar'; // 'calendar' or 'budget'
+
+            let events = loadEvents();
+            let todos = loadTodos();
+            let budgets = loadBudgets();
+
+            let doughnutChart = null;
+            let barChart = null;
+
+            // DOM Elements
+            const tabCalendarBtn = document.getElementById('tabCalendarBtn');
+            const tabBudgetBtn = document.getElementById('tabBudgetBtn');
+            const mobileTabCalendarBtn = document.getElementById('mobileTabCalendarBtn');
+            const mobileTabBudgetBtn = document.getElementById('mobileTabBudgetBtn');
+            const calendarViewContainer = document.getElementById('calendarViewContainer');
+            const budgetViewContainer = document.getElementById('budgetViewContainer');
+            const searchContainer = document.getElementById('searchContainer');
+            const primaryActionBtn = document.getElementById('primaryActionBtn');
+            const primaryActionText = document.getElementById('primaryActionText');
+
+            const calendarGrid = document.getElementById('calendarGrid');
+            const currentMonthYearText = document.getElementById('currentMonthYearText');
+            const prevMonthBtn = document.getElementById('prevMonthBtn');
+            const nextMonthBtn = document.getElementById('nextMonthBtn');
+            const todayBtn = document.getElementById('todayBtn');
+
+            const selectedDateText = document.getElementById('selectedDateText');
+            const selectedDayOfWeek = document.getElementById('selectedDayOfWeek');
+            const selectedDateEventsList = document.getElementById('selectedDateEventsList');
+            const addEventForDateBtn = document.getElementById('addEventForDateBtn');
+            const searchInput = document.getElementById('searchInput');
+
+            const eventModal = document.getElementById('eventModal');
+            const closeModalBtn = document.getElementById('closeModalBtn');
+            const cancelModalBtn = document.getElementById('cancelModalBtn');
+            const eventForm = document.getElementById('eventForm');
+            const modalTitle = document.getElementById('modalTitle');
+            const eventIdInput = document.getElementById('eventId');
+            const eventTitleInput = document.getElementById('eventTitle');
+            const eventDateInput = document.getElementById('eventDate');
+            const eventTimeInput = document.getElementById('eventTime');
+            const eventCategorySelect = document.getElementById('eventCategory');
+            const eventNotesInput = document.getElementById('eventNotes');
+            const deleteEventBtn = document.getElementById('deleteEventBtn');
+
+            // Budget Modal & Elements
+            const budgetModal = document.getElementById('budgetModal');
+            const closeBudgetModalBtn = document.getElementById('closeBudgetModalBtn');
+            const cancelBudgetModalBtn = document.getElementById('cancelBudgetModalBtn');
+            const budgetForm = document.getElementById('budgetForm');
+            const budgetModalTitle = document.getElementById('budgetModalTitle');
+            const budgetIdInput = document.getElementById('budgetId');
+            const budgetNameInput = document.getElementById('budgetName');
+            const budgetCategoryInput = document.getElementById('budgetCategory');
+            const budgetStatusInput = document.getElementById('budgetStatus');
+            const budgetAllocatedInput = document.getElementById('budgetAllocated');
+            const budgetSpentInput = document.getElementById('budgetSpent');
+            const budgetPeriodInput = document.getElementById('budgetPeriod');
+            const deleteBudgetBtn = document.getElementById('deleteBudgetBtn');
+            const addBudgetBtn = document.getElementById('addBudgetBtn');
+            const budgetTableBody = document.getElementById('budgetTableBody');
+
+            const totalBudgetVal = document.getElementById('totalBudgetVal');
+            const totalSpentVal = document.getElementById('totalSpentVal');
+            const totalRemainingVal = document.getElementById('totalRemainingVal');
+            const budgetPercentBadge = document.getElementById('budgetPercentBadge');
+
+            const todoForm = document.getElementById('todoForm');
+            const todoInput = document.getElementById('todoInput');
+            const todoList = document.getElementById('todoList');
+            const todoCountText = document.getElementById('todoCountText');
+
+            const themeToggleBtn = document.getElementById('themeToggleBtn');
+            const settingsMenuBtn = document.getElementById('settingsMenuBtn');
+            const settingsDropdown = document.getElementById('settingsDropdown');
+            const exportDataBtn = document.getElementById('exportDataBtn');
+            const importFileInput = document.getElementById('importFileInput');
+            const pwaInstallBtn = document.getElementById('pwaInstallBtn');
+            const notifyToggleBtn = document.getElementById('notifyToggleBtn');
+            const triggerTestNotifyBtn = document.getElementById('triggerTestNotifyBtn');
+            const showElectronGuideBtn = document.getElementById('showElectronGuideBtn');
+            const electronGuideModal = document.getElementById('electronGuideModal');
+            const closeElectronGuideBtn = document.getElementById('closeElectronGuideBtn');
+            const confirmElectronGuideBtn = document.getElementById('confirmElectronGuideBtn');
+
+            function setupDynamicPWA() {
+                const manifest = {
+                    name: "개인 데스크톱 플래너",
+                    short_name: "플래너",
+                    start_url: "./",
+                    display: "standalone",
+                    background_color: "#0f172a",
+                    theme_color: "#4f46e5",
+                    icons: [{
+                        src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%234f46e5'/><text x='50%' y='55%' font-size='50' fill='white' text-anchor='middle' dominant-baseline='middle'>📅</text></svg>",
+                        sizes: "192x192 512x512",
+                        type: "image/svg+xml"
+                    }]
+                };
+                const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+                document.getElementById('manifest-placeholder').setAttribute('href', URL.createObjectURL(manifestBlob));
+
+                if ('serviceWorker' in navigator) {
+                    const swCode = `
+                        const CACHE_NAME = 'calendar-pwa-v2';
+                        self.addEventListener('install', (e) => {
+                            e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['./'])));
+                            self.skipWaiting();
+                        });
+                        self.addEventListener('fetch', (e) => {
+                            e.respondWith(caches.match(e.request).then(res => res || fetch(e.request)));
+                        });
+                    `;
+                    const blob = new Blob([swCode], { type: 'application/javascript' });
+                    navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(console.error);
+                }
+            }
+
+            function init() {
+                setupDynamicPWA();
+
+                if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+
+                // Tab switching listeners
+                tabCalendarBtn.addEventListener('click', () => switchTab('calendar'));
+                tabBudgetBtn.addEventListener('click', () => switchTab('budget'));
+                mobileTabCalendarBtn.addEventListener('click', () => switchTab('calendar'));
+                mobileTabBudgetBtn.addEventListener('click', () => switchTab('budget'));
+
+                // Navigation & Actions
+                prevMonthBtn.addEventListener('click', () => changeMonth(-1));
+                nextMonthBtn.addEventListener('click', () => changeMonth(1));
+                todayBtn.addEventListener('click', goToToday);
+
+                primaryActionBtn.addEventListener('click', () => {
+                    if (currentActiveTab === 'calendar') {
+                        openEventModalForCreate(selectedDateStr);
+                    } else {
+                        openBudgetModalForCreate();
+                    }
+                });
+                addEventForDateBtn.addEventListener('click', () => openEventModalForCreate(selectedDateStr));
+                addBudgetBtn.addEventListener('click', () => openBudgetModalForCreate());
+
+                closeModalBtn.addEventListener('click', closeEventModal);
+                cancelModalBtn.addEventListener('click', closeEventModal);
+                eventForm.addEventListener('submit', handleEventFormSubmit);
+                deleteEventBtn.addEventListener('click', handleDeleteEvent);
+
+                closeBudgetModalBtn.addEventListener('click', closeBudgetModal);
+                cancelBudgetModalBtn.addEventListener('click', closeBudgetModal);
+                budgetForm.addEventListener('submit', handleBudgetFormSubmit);
+                deleteBudgetBtn.addEventListener('click', handleDeleteBudget);
+
+                searchInput.addEventListener('input', (e) => {
+                    searchQuery = e.target.value.toLowerCase().trim();
+                    renderCalendar();
+                    renderSelectedDateEvents();
+                });
+
+                document.querySelectorAll('.category-filter-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const target = e.currentTarget;
+                        activeCategoryFilter = target.getAttribute('data-category');
+
+                        document.querySelectorAll('.category-filter-btn').forEach(b => {
+                            b.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-600');
+                            b.classList.add('bg-white', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-300');
+                        });
+                        target.classList.remove('bg-white', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-300');
+                        target.classList.add('bg-indigo-600', 'text-white', 'border-indigo-600');
+
+                        renderCalendar();
+                        renderSelectedDateEvents();
+                    });
+                });
+
+                todoForm.addEventListener('submit', handleAddTodo);
+
+                themeToggleBtn.addEventListener('click', () => {
+                    if (document.documentElement.classList.contains('dark')) {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('theme', 'light');
+                    } else {
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('theme', 'dark');
+                    }
+                    if (currentActiveTab === 'budget') renderBudgetModule();
+                });
+
+                settingsMenuBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    settingsDropdown.classList.toggle('hidden');
+                });
+                document.addEventListener('click', () => settingsDropdown.classList.add('hidden'));
+
+                exportDataBtn.addEventListener('click', exportData);
+                importFileInput.addEventListener('change', importData);
+
+                notifyToggleBtn.addEventListener('click', requestNotificationPermission);
+                triggerTestNotifyBtn.addEventListener('click', sendTestNotification);
+
+                showElectronGuideBtn.addEventListener('click', () => electronGuideModal.classList.remove('hidden'));
+                closeElectronGuideBtn.addEventListener('click', () => electronGuideModal.classList.add('hidden'));
+                confirmElectronGuideBtn.addEventListener('click', () => electronGuideModal.classList.add('hidden'));
+
+                updateNotificationIcon();
+                renderCalendar();
+                renderSelectedDateEvents();
+                renderTodos();
+            }
+
+            function switchTab(tab) {
+                currentActiveTab = tab;
+                if (tab === 'calendar') {
+                    calendarViewContainer.classList.remove('hidden');
+                    budgetViewContainer.classList.add('hidden');
+                    searchContainer.classList.remove('hidden');
+                    primaryActionText.textContent = '새 일정';
+
+                    tabCalendarBtn.className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white shadow-sm transition-all";
+                    tabBudgetBtn.className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all";
+                    mobileTabCalendarBtn.className = "flex-1 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white shadow-sm transition-all text-center";
+                    mobileTabBudgetBtn.className = "flex-1 py-1.5 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-center";
+                } else {
+                    calendarViewContainer.classList.add('hidden');
+                    budgetViewContainer.classList.remove('hidden');
+                    searchContainer.classList.add('hidden');
+                    primaryActionText.textContent = '캠페인 추가';
+
+                    tabBudgetBtn.className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white shadow-sm transition-all";
+                    tabCalendarBtn.className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all";
+                    mobileTabBudgetBtn.className = "flex-1 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white shadow-sm transition-all text-center";
+                    mobileTabCalendarBtn.className = "flex-1 py-1.5 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-center";
+
+                    renderBudgetModule();
+                }
+            }
+
+            function requestNotificationPermission() {
+                if (!("Notification" in window)) return;
+                Notification.requestPermission().then(permission => {
+                    updateNotificationIcon();
+                    if (permission === "granted") sendTestNotification();
+                });
+            }
+
+            function updateNotificationIcon() {
+                const icon = document.getElementById('notifyIcon');
+                if ("Notification" in window && Notification.permission === "granted") {
+                    icon.className = "fa-solid fa-bell text-indigo-500 text-base";
+                } else {
+                    icon.className = "fa-regular fa-bell text-slate-600 dark:text-slate-300 text-base";
+                }
+            }
+
+            function sendTestNotification() {
+                if ("Notification" in window && Notification.permission === "granted") {
+                    new Notification("데스크톱 플래너", { body: "마케팅 예산 및 일정 알림 기능이 활성화되었습니다!" });
+                } else {
+                    requestNotificationPermission();
+                }
+            }
+
+            function formatDateKey(dateObj) {
+                const y = dateObj.getFullYear();
+                const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const d = String(dateObj.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            }
+
+            // Data Loaders & Savers
+            function loadEvents() {
+                const saved = localStorage.getItem('my_calendar_events');
+                if (saved) {
+                    try { return JSON.parse(saved); } catch (e) { return []; }
+                }
+                const todayStr = formatDateKey(new Date());
+                return [{ id: 'sample-1', title: '신규 마케팅 캠페인 기획 🚀', date: todayStr, time: '10:00', category: 'WORK', notes: '예산 관리 탭에서 캠페인별 집행액을 확인하세요.' }];
+            }
+            function saveEvents() { localStorage.setItem('my_calendar_events', JSON.stringify(events)); }
+
+            function loadTodos() {
+                const saved = localStorage.getItem('my_calendar_todos');
+                if (saved) { try { return JSON.parse(saved); } catch (e) { return []; } }
+                return [{ id: 't1', text: '마케팅 예산 보고서 작성', completed: false }];
+            }
+            function saveTodos() { localStorage.setItem('my_calendar_todos', JSON.stringify(todos)); }
+
+            function loadBudgets() {
+                const saved = localStorage.getItem('my_marketing_budgets');
+                if (saved) { try { return JSON.parse(saved); } catch (e) { return []; } }
+                return [
+                    { id: 'b1', name: '가을 시즌 SNS 광고', category: 'SNS 광고', allocated: 2000000, spent: 1850000, period: '10.01 ~ 10.20', status: '진행 중' },
+                    { id: 'b2', name: '검색광고 키워드 확장', category: '검색 광고', allocated: 1000000, spent: 920000, period: '10.01 ~ 10.31', status: '진행 중' },
+                    { id: 'b3', name: '인플루언서 릴스 협찬', category: '인플루언서', allocated: 1500000, spent: 1500000, period: '10.05 ~ 10.10', status: '완료' }
+                ];
+            }
+            function saveBudgets() { localStorage.setItem('my_marketing_budgets', JSON.stringify(budgets)); }
+
+            // Calendar Logic
+            function changeMonth(delta) {
+                currentDate.setMonth(currentDate.getMonth() + delta);
+                renderCalendar();
+            }
+            function goToToday() {
+                currentDate = new Date();
+                selectedDateStr = formatDateKey(new Date());
+                renderCalendar();
+                renderSelectedDateEvents();
+            }
+
+            function renderCalendar() {
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth();
+                currentMonthYearText.textContent = `${year}년 ${month + 1}월`;
+
+                const firstDayOfMonth = new Date(year, month, 1);
+                const lastDayOfMonth = new Date(year, month + 1, 0);
+                const startingDayOfWeek = firstDayOfMonth.getDay();
+                const totalDays = lastDayOfMonth.getDate();
+                const prevMonthLastDay = new Date(year, month, 0).getDate();
+
+                calendarGrid.innerHTML = '';
+                const todayStr = formatDateKey(new Date());
+                const totalCells = Math.ceil((startingDayOfWeek + totalDays) / 7) * 7;
+
+                for (let i = 0; i < totalCells; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'group relative p-1.5 flex flex-col justify-between transition-colors min-h-[85px] sm:min-h-[100px] hover:bg-slate-100/50 dark:hover:bg-slate-800/40 cursor-pointer';
+
+                    let cellDateStr = '';
+                    let dayNum = 0;
+                    let isCurrentMonth = true;
+
+                    if (i < startingDayOfWeek) {
+                        dayNum = prevMonthLastDay - startingDayOfWeek + i + 1;
+                        isCurrentMonth = false;
+                        cellDateStr = formatDateKey(new Date(year, month - 1, dayNum));
+                    } else if (i >= startingDayOfWeek + totalDays) {
+                        dayNum = i - (startingDayOfWeek + totalDays) + 1;
+                        isCurrentMonth = false;
+                        cellDateStr = formatDateKey(new Date(year, month + 1, dayNum));
+                    } else {
+                        dayNum = i - startingDayOfWeek + 1;
+                        cellDateStr = formatDateKey(new Date(year, month, dayNum));
+                    }
+
+                    if (cellDateStr === selectedDateStr) cell.classList.add('bg-indigo-50/80', 'dark:bg-indigo-950/40');
+
+                    const topRow = document.createElement('div');
+                    topRow.className = 'flex items-center justify-between mb-1';
+                    const daySpan = document.createElement('span');
+                    daySpan.textContent = dayNum;
+                    daySpan.className = `inline-flex items-center justify-center text-xs font-semibold w-6 h-6 rounded-full transition-all ${!isCurrentMonth ? 'text-slate-300 dark:text-slate-600' : 'text-slate-700 dark:text-slate-200'}`;
+
+                    if (cellDateStr === todayStr) {
+                        daySpan.className = 'inline-flex items-center justify-center text-xs font-bold w-6 h-6 rounded-full bg-indigo-600 text-white shadow-sm';
+                    }
+                    topRow.appendChild(daySpan);
+                    cell.appendChild(topRow);
+
+                    const cellEventsContainer = document.createElement('div');
+                    cellEventsContainer.className = 'space-y-1 overflow-hidden flex-1';
+
+                    const dayEvents = events.filter(evt => {
+                        if (evt.date !== cellDateStr) return false;
+                        if (activeCategoryFilter !== 'ALL' && evt.category !== activeCategoryFilter) return false;
+                        if (searchQuery && !evt.title.toLowerCase().includes(searchQuery) && !(evt.notes && evt.notes.toLowerCase().includes(searchQuery))) return false;
+                        return true;
+                    });
+                    dayEvents.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+
+                    dayEvents.slice(0, 2).forEach(evt => {
+                        const catConfig = CATEGORIES[evt.category] || CATEGORIES.WORK;
+                        const badge = document.createElement('div');
+                        badge.className = `text-[10px] leading-tight px-1.5 py-1 rounded font-medium truncate flex items-center space-x-1 ${catConfig.bgLight} ${catConfig.text}`;
+                        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full flex-shrink-0 ${catConfig.color}"></span><span class="truncate">${evt.time ? `${evt.time} ` : ''}${escapeHtml(evt.title)}</span>`;
+                        cellEventsContainer.appendChild(badge);
+                    });
+
+                    if (dayEvents.length > 2) {
+                        const more = document.createElement('div');
+                        more.className = 'text-[9px] font-bold text-slate-400 pl-1';
+                        more.textContent = `+${dayEvents.length - 2}개`;
+                        cellEventsContainer.appendChild(more);
+                    }
+                    cell.appendChild(cellEventsContainer);
+
+                    cell.addEventListener('click', () => {
+                        selectedDateStr = cellDateStr;
+                        renderCalendar();
+                        renderSelectedDateEvents();
+                    });
+                    calendarGrid.appendChild(cell);
+                }
+            }
+
+            function renderSelectedDateEvents() {
+                const [y, m, d] = selectedDateStr.split('-');
+                const dateObj = new Date(y, m - 1, d);
+                const daysKorean = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+
+                selectedDayOfWeek.textContent = daysKorean[dateObj.getDay()];
+                selectedDateText.textContent = `${y}년 ${parseInt(m)}월 ${parseInt(d)}일`;
+                selectedDateEventsList.innerHTML = '';
+
+                const dayEvents = events.filter(evt => {
+                    if (evt.date !== selectedDateStr) return false;
+                    if (activeCategoryFilter !== 'ALL' && evt.category !== activeCategoryFilter) return false;
+                    if (searchQuery && !evt.title.toLowerCase().includes(searchQuery) && !(evt.notes && evt.notes.toLowerCase().includes(searchQuery))) return false;
+                    return true;
+                });
+                dayEvents.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+
+                if (dayEvents.length === 0) {
+                    selectedDateEventsList.innerHTML = `<div class="h-full flex flex-col items-center justify-center text-center py-8 text-slate-400"><i class="fa-regular fa-calendar-xmark text-3xl mb-2"></i><p class="text-xs">등록된 일정이 없습니다.</p></div>`;
+                    return;
+                }
+
+                dayEvents.forEach(evt => {
+                    const catConfig = CATEGORIES[evt.category] || CATEGORIES.WORK;
+                    const card = document.createElement('div');
+                    card.className = `p-2.5 rounded-xl border ${catConfig.border}/30 ${catConfig.bgLight} hover:shadow-md transition-all cursor-pointer group`;
+                    card.innerHTML = `
+                        <div class="flex items-start justify-between">
+                            <div class="flex items-center space-x-2">
+                                <span class="w-2 h-2 rounded-full ${catConfig.color}"></span>
+                                <h4 class="font-semibold text-xs text-slate-800 dark:text-slate-100 group-hover:text-indigo-600">${escapeHtml(evt.title)}</h4>
+                            </div>
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full ${catConfig.bgLight} ${catConfig.text}">${catConfig.label}</span>
+                        </div>
+                        ${evt.time ? `<div class="mt-1 text-[11px] text-slate-500"><i class="fa-regular fa-clock text-[9px]"></i> <span>${evt.time}</span></div>` : ''}
+                        ${evt.notes ? `<p class="mt-1 text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 bg-white/50 dark:bg-slate-900/40 p-1 rounded-md">${escapeHtml(evt.notes)}</p>` : ''}
+                    `;
+                    card.addEventListener('click', () => openEventModalForEdit(evt));
+                    selectedDateEventsList.appendChild(card);
+                });
+            }
+
+            // Marketing Budget Module Logic
+            function renderBudgetModule() {
+                let totalAllocated = 0;
+                let totalSpent = 0;
+                budgetTableBody.innerHTML = '';
+
+                if (budgets.length === 0) {
+                    budgetTableBody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400">등록된 마케팅 예산 내역이 없습니다.</td></tr>`;
+                }
+
+                let categoryMap = {};
+
+                budgets.forEach(b => {
+                    const allocated = Number(b.allocated) || 0;
+                    const spent = Number(b.spent) || 0;
+                    totalAllocated += allocated;
+                    totalSpent += spent;
+
+                    categoryMap[b.category] = (categoryMap[b.category] || 0) + spent;
+
+                    let statusClass = 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400';
+                    if (b.status === '진행 중') statusClass = 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400';
+                    if (b.status === '완료') statusClass = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400';
+
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors';
+                    tr.innerHTML = `
+                        <td class="p-3 font-semibold text-slate-800 dark:text-slate-100">${escapeHtml(b.name)}</td>
+                        <td class="p-3"><span class="px-2 py-0.5 rounded bg-slate-200/60 dark:bg-slate-800 text-[11px] font-medium">${escapeHtml(b.category)}</span></td>
+                        <td class="p-3 font-medium text-slate-700 dark:text-slate-300">${allocated.toLocaleString()}원</td>
+                        <td class="p-3 font-medium text-amber-600 dark:text-amber-400">${spent.toLocaleString()}원</td>
+                        <td class="p-3 text-slate-500">${escapeHtml(b.period || '미정')}</td>
+                        <td class="p-3"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${statusClass}">${escapeHtml(b.status)}</span></td>
+                        <td class="p-3 text-center space-x-2">
+                            <button class="edit-budget-btn text-slate-400 hover:text-indigo-600 transition-colors" title="수정"><i class="fa-solid fa-pen text-xs"></i></button>
+                            <button class="delete-budget-btn text-slate-400 hover:text-rose-500 transition-colors" title="삭제"><i class="fa-solid fa-trash text-xs"></i></button>
+                        </td>
+                    `;
+
+                    tr.querySelector('.edit-budget-btn').addEventListener('click', () => openBudgetModalForEdit(b));
+                    tr.querySelector('.delete-budget-btn').addEventListener('click', () => {
+                        budgets = budgets.filter(item => item.id !== b.id);
+                        saveBudgets();
+                        renderBudgetModule();
+                    });
+
+                    budgetTableBody.appendChild(tr);
+                });
+
+                const remaining = totalAllocated - totalSpent;
+                const percent = totalAllocated > 0 ? Math.round((totalSpent / totalAllocated) * 100) : 0;
+
+                totalBudgetVal.textContent = totalAllocated.toLocaleString() + ' 원';
+                totalSpentVal.textContent = totalSpent.toLocaleString() + ' 원';
+                totalRemainingVal.textContent = remaining.toLocaleString() + ' 원';
+                budgetPercentBadge.textContent = `${percent}% 집행`;
+
+                updateBudgetCharts(categoryMap);
+            }
+
+            function updateBudgetCharts(categoryMap) {
+                if (typeof Chart === 'undefined') return;
+                const isDark = document.documentElement.classList.contains('dark');
+                const textColor = isDark ? '#cbd5e1' : '#475569';
+
+                // 1. Doughnut Chart
+                const ctxDoughnut = document.getElementById('budgetDoughnutChart').getContext('2d');
+                if (doughnutChart) doughnutChart.destroy();
+
+                const categories = Object.keys(categoryMap);
+                const spendVals = Object.values(categoryMap);
+
+                doughnutChart = new Chart(ctxDoughnut, {
+                    type: 'doughnut',
+                    data: {
+                        labels: categories.length > 0 ? categories : ['데이터 없음'],
+                        datasets: [{
+                            data: spendVals.length > 0 ? spendVals : [1],
+                            backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 }, color: textColor } }
+                        }
+                    }
+                });
+
+                // 2. Bar Chart
+                const ctxBar = document.getElementById('budgetBarChart').getContext('2d');
+                if (barChart) barChart.destroy();
+
+                const names = budgets.map(b => b.name);
+                const allocatedData = budgets.map(b => b.allocated);
+                const spentData = budgets.map(b => b.spent);
+
+                barChart = new Chart(ctxBar, {
+                    type: 'bar',
+                    data: {
+                        labels: names.length > 0 ? names : ['캠페인 없음'],
+                        datasets: [
+                            { label: '계획 예산', data: allocatedData.length > 0 ? allocatedData : [0], backgroundColor: '#4f46e5', borderRadius: 4 },
+                            { label: '실제 집행', data: spentData.length > 0 ? spentData : [0], backgroundColor: '#f59e0b', borderRadius: 4 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { ticks: { color: textColor, font: { size: 10 } }, grid: { display: false } },
+                            y: { ticks: { color: textColor }, grid: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }, beginAtZero: true }
+                        },
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 }, color: textColor } }
+                        }
+                    }
+                });
+            }
+
+            // Modal Handlers (Event)
+            function openEventModalForCreate(dateStr) {
+                modalTitle.textContent = '일정 등록';
+                eventIdInput.value = '';
+                eventTitleInput.value = '';
+                eventDateInput.value = dateStr || selectedDateStr;
+                eventTimeInput.value = '';
+                eventCategorySelect.value = 'WORK';
+                eventNotesInput.value = '';
+                deleteEventBtn.classList.add('hidden');
+                eventModal.classList.remove('hidden');
+            }
+            function openEventModalForEdit(evt) {
+                modalTitle.textContent = '일정 수정';
+                eventIdInput.value = evt.id;
+                eventTitleInput.value = evt.title;
+                eventDateInput.value = evt.date;
+                eventTimeInput.value = evt.time || '';
+                eventCategorySelect.value = evt.category || 'WORK';
+                eventNotesInput.value = evt.notes || '';
+                deleteEventBtn.classList.remove('hidden');
+                eventModal.classList.remove('hidden');
+            }
+            function closeEventModal() { eventModal.classList.add('hidden'); }
+
+            function handleEventFormSubmit(e) {
+                e.preventDefault();
+                const id = eventIdInput.value;
+                const title = eventTitleInput.value.trim();
+                const date = eventDateInput.value;
+                const time = eventTimeInput.value;
+                const category = eventCategorySelect.value;
+                const notes = eventNotesInput.value.trim();
+                if (!title || !date) return;
+
+                if (id) {
+                    const idx = events.findIndex(e => e.id === id);
+                    if (idx !== -1) events[idx] = { id, title, date, time, category, notes };
+                } else {
+                    events.push({ id: 'evt_' + Date.now(), title, date, time, category, notes });
+                }
+                saveEvents();
+                closeEventModal();
+                selectedDateStr = date;
+                renderCalendar();
+                renderSelectedDateEvents();
+            }
+
+            function handleDeleteEvent() {
+                const id = eventIdInput.value;
+                if (!id) return;
+                events = events.filter(e => e.id !== id);
+                saveEvents();
+                closeEventModal();
+                renderCalendar();
+                renderSelectedDateEvents();
+            }
+
+            // Modal Handlers (Budget)
+            function openBudgetModalForCreate() {
+                budgetModalTitle.textContent = '캠페인 예산 추가';
+                budgetIdInput.value = '';
+                budgetNameInput.value = '';
+                budgetCategoryInput.value = 'SNS 광고';
+                budgetStatusInput.value = '진행 중';
+                budgetAllocatedInput.value = '';
+                budgetSpentInput.value = '';
+                budgetPeriodInput.value = '';
+                deleteBudgetBtn.classList.add('hidden');
+                budgetModal.classList.remove('hidden');
+            }
+            function openBudgetModalForEdit(b) {
+                budgetModalTitle.textContent = '캠페인 예산 수정';
+                budgetIdInput.value = b.id;
+                budgetNameInput.value = b.name;
+                budgetCategoryInput.value = b.category;
+                budgetStatusInput.value = b.status;
+                budgetAllocatedInput.value = b.allocated;
+                budgetSpentInput.value = b.spent;
+                budgetPeriodInput.value = b.period || '';
+                deleteBudgetBtn.classList.remove('hidden');
+                budgetModal.classList.remove('hidden');
+            }
+            function closeBudgetModal() { budgetModal.classList.add('hidden'); }
+
+            function handleBudgetFormSubmit(e) {
+                e.preventDefault();
+                const id = budgetIdInput.value;
+                const name = budgetNameInput.value.trim();
+                const category = budgetCategoryInput.value;
+                const status = budgetStatusInput.value;
+                const allocated = Number(budgetAllocatedInput.value) || 0;
+                const spent = Number(budgetSpentInput.value) || 0;
+                const period = budgetPeriodInput.value.trim();
+                if (!name) return;
+
+                if (id) {
+                    const idx = budgets.findIndex(b => b.id === id);
+                    if (idx !== -1) budgets[idx] = { id, name, category, status, allocated, spent, period };
+                } else {
+                    budgets.push({ id: 'bud_' + Date.now(), name, category, status, allocated, spent, period });
+                }
+                saveBudgets();
+                closeBudgetModal();
+                renderBudgetModule();
+            }
+
+            function handleDeleteBudget() {
+                const id = budgetIdInput.value;
+                if (!id) return;
+                budgets = budgets.filter(b => b.id !== id);
+                saveBudgets();
+                closeBudgetModal();
+                renderBudgetModule();
+            }
+
+            // Todo Logic
+            function renderTodos() {
+                todoList.innerHTML = '';
+                const total = todos.length;
+                const completedCount = todos.filter(t => t.completed).length;
+                todoCountText.textContent = `${completedCount}/${total}`;
+
+                if (todos.length === 0) {
+                    todoList.innerHTML = `<li class="text-xs text-slate-400 text-center py-3">등록된 할 일이 없습니다.</li>`;
+                    return;
+                }
+
+                todos.forEach(todo => {
+                    const li = document.createElement('li');
+                    li.className = 'flex items-center justify-between p-1.5 rounded-lg bg-slate-200/50 dark:bg-slate-800/60 border border-slate-200/50 dark:border-slate-800 group';
+                    li.innerHTML = `
+                        <label class="flex items-center space-x-2 flex-1 cursor-pointer">
+                            <input type="checkbox" ${todo.completed ? 'checked' : ''} class="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-xs text-slate-700 dark:text-slate-200 ${todo.completed ? 'line-through text-slate-400' : ''}">${escapeHtml(todo.text)}</span>
+                        </label>
+                        <button class="delete-todo-btn text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"><i class="fa-solid fa-xmark text-xs"></i></button>
+                    `;
+                    li.querySelector('input').addEventListener('change', (e) => {
+                        todo.completed = e.target.checked;
+                        saveTodos();
+                        renderTodos();
+                    });
+                    li.querySelector('.delete-todo-btn').addEventListener('click', () => {
+                        todos = todos.filter(t => t.id !== todo.id);
+                        saveTodos();
+                        renderTodos();
+                    });
+                    todoList.appendChild(li);
+                });
+            }
+
+            function handleAddTodo(e) {
+                e.preventDefault();
+                const text = todoInput.value.trim();
+                if (!text) return;
+                todos.push({ id: 'todo_' + Date.now(), text, completed: false });
+                todoInput.value = '';
+                saveTodos();
+                renderTodos();
+            }
+
+            // Backup & Export
+            function exportData() {
+                const data = { events, todos, budgets, exportDate: new Date().toISOString() };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `workspace-backup-${formatDateKey(new Date())}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            function importData(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    try {
+                        const data = JSON.parse(evt.target.result);
+                        if (Array.isArray(data.events)) { events = data.events; saveEvents(); }
+                        if (Array.isArray(data.todos)) { todos = data.todos; saveTodos(); }
+                        if (Array.isArray(data.budgets)) { budgets = data.budgets; saveBudgets(); }
+                        renderCalendar();
+                        renderSelectedDateEvents();
+                        renderTodos();
+                        if (currentActiveTab === 'budget') renderBudgetModule();
+                        alert('데이터가 성공적으로 복구되었습니다!');
+                    } catch (err) {
+                        alert('유효하지 않은 백업 파일입니다.');
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return str.replace(/[&<>"']/g, function(m) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+                });
+            }
+
+            window.onload = init;
+        })();
+    </script>
+</body>
+</html>
